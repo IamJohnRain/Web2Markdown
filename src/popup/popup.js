@@ -186,17 +186,42 @@ saveBtn.addEventListener('click', async () => {
       const pathManager = new ImagePathManager(fileName);
       const assetsFolder = pathManager.getAssetsFolderName();
       
-      // 构建图片保存的完整路径
-      // Chrome Downloads API 需要使用相对路径格式
+      // 构建图片保存路径
+      // Chrome Downloads API 的 filename 参数是相对于默认下载目录的路径
+      // 我们需要使用与 MD 文件相同的路径
       let imageSavePath;
       if (saveDir) {
-        // 将绝对路径转换为相对路径格式
-        // Windows: C:\Users\...\Documents -> Documents/.../images
-        // macOS/Linux: /Users/.../Documents -> Documents/.../images
-        const dirParts = saveDir.split(/[/\\]/);
-        // 取最后几级目录构建相对路径
-        const relativeParts = dirParts.slice(-3); // 最多取3级
-        imageSavePath = relativeParts.join('/') + '/' + assetsFolder;
+        // 获取默认下载目录
+        const defaultDownloadDir = await new Promise((resolve) => {
+          chrome.downloads.search({ limit: 0 }, (results) => {
+            // 尝试从最近的下载中获取下载目录
+            if (results && results.length > 0 && results[0].filename) {
+              const firstDownload = results[0].filename;
+              const lastSlash = firstDownload.lastIndexOf('/');
+              const lastBackslash = firstDownload.lastIndexOf('\\');
+              const sepIdx = Math.max(lastSlash, lastBackslash);
+              resolve(sepIdx > 0 ? firstDownload.substring(0, sepIdx) : '');
+            } else {
+              resolve('');
+            }
+          });
+        });
+        
+        console.log('Default download dir:', defaultDownloadDir);
+        console.log('Save dir:', saveDir);
+        
+        // 计算相对路径
+        if (defaultDownloadDir && saveDir.startsWith(defaultDownloadDir)) {
+          // saveDir 是默认下载目录的子目录
+          const relativePath = saveDir.substring(defaultDownloadDir.length);
+          // 移除开头的分隔符
+          const cleanPath = relativePath.replace(/^[/\\]+/, '');
+          imageSavePath = cleanPath ? cleanPath + '/' + assetsFolder : assetsFolder;
+        } else {
+          // saveDir 不在默认下载目录下,使用完整路径的最后几级
+          const dirParts = saveDir.split(/[/\\]/).filter(p => p);
+          imageSavePath = dirParts.join('/') + '/' + assetsFolder;
+        }
       } else {
         imageSavePath = assetsFolder;
       }
