@@ -137,10 +137,14 @@ class ImageDownloader {
     // 等待下载完成
     await this.waitForCompletion(downloadId);
     
+    // 获取下载文件的绝对路径
+    const absolutePath = await this.getDownloadAbsolutePath(downloadId);
+    
     return {
       imageId: image.id,
       success: true,
-      localPath: fullPath,
+      localPath: absolutePath || fullPath,
+      relativePath: fullPath,
       filename: filename
     };
   }
@@ -179,10 +183,14 @@ class ImageDownloader {
       // 等待下载完成
       await this.waitForCompletion(downloadId);
       
+      // 获取下载文件的绝对路径
+      const absolutePath = await this.getDownloadAbsolutePath(downloadId);
+      
       return {
         imageId: image.id,
         success: true,
-        localPath: fullPath,
+        localPath: absolutePath || fullPath,
+        relativePath: fullPath,
         filename: filename
       };
     } finally {
@@ -226,6 +234,23 @@ class ImageDownloader {
       };
       
       chrome.downloads.onChanged.addListener(listener);
+    });
+  }
+  
+  /**
+   * 获取下载文件的绝对路径
+   * @param {number} downloadId - 下载ID
+   * @returns {Promise<string|null>} 绝对路径
+   */
+  async getDownloadAbsolutePath(downloadId) {
+    return new Promise((resolve) => {
+      chrome.downloads.search({ id: downloadId }, (results) => {
+        if (results && results.length > 0 && results[0].filename) {
+          resolve(results[0].filename);
+        } else {
+          resolve(null);
+        }
+      });
     });
   }
   
