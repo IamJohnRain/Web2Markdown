@@ -249,6 +249,8 @@ saveBtn.addEventListener('click', async () => {
       if (imageStats.failed > 0) {
         message += `，${imageStats.failed} 失败`;
       }
+      message += `\n提示: 图片保存在默认下载目录的 images 文件夹中`;
+      message += `\n请将 images 文件夹移动到 MD 文件所在目录`;
     }
     showStatus('success', message);
     
