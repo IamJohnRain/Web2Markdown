@@ -92,18 +92,37 @@ saveBtn.addEventListener('click', async () => {
     const { title, html, url } = results[0].result;
     const fileName = converter.sanitizeFileName(title);
     
+    // 检查是否需要下载图片
+    const shouldDownloadImages = downloadImagesCheckbox.checked;
+    
+    let markdown;
+    let images = null;
+    
+    if (shouldDownloadImages) {
+      // 使用带图片提取的转换方法
+      const result = converter.convertWithImages(html, title, url);
+      markdown = result.markdown;
+      images = result.images;
+    } else {
+      // 不下载图片，使用原有转换方法
+      markdown = converter.convert(html, title, url);
+    }
+    
     // 先让用户选择保存路径
     showStatus('loading', '请选择保存位置...');
     
-    // 创建一个临时的空文件来获取用户选择的路径
-    const tempBlob = new Blob([''], { type: 'text/plain' });
-    const tempBlobUrl = URL.createObjectURL(tempBlob);
+    // 创建 Markdown 文件的 Blob
+    const blob = new Blob([markdown], { type: 'text/markdown' });
+    const blobUrl = URL.createObjectURL(blob);
     
     let savePath = null;
+    let downloadId = null;
+    
     try {
-      const downloadId = await new Promise((resolve, reject) => {
+      // 触发保存对话框
+      downloadId = await new Promise((resolve, reject) => {
         chrome.downloads.download({
-          url: tempBlobUrl,
+          url: blobUrl,
           filename: fileName + '.md',
           saveAs: true
         }, (downloadId) => {
@@ -115,6 +134,19 @@ saveBtn.addEventListener('click', async () => {
         });
       });
       
+      // 等待下载完成
+      await new Promise((resolve) => {
+        const listener = (delta) => {
+          if (delta.id === downloadId && delta.state) {
+            if (delta.state.current === 'complete' || delta.state.current === 'interrupted') {
+              chrome.downloads.onChanged.removeListener(listener);
+              resolve();
+            }
+          }
+        };
+        chrome.downloads.onChanged.addListener(listener);
+      });
+      
       // 获取用户选择的保存路径
       const downloadItem = await new Promise((resolve) => {
         chrome.downloads.search({ id: downloadId }, (results) => {
@@ -124,13 +156,9 @@ saveBtn.addEventListener('click', async () => {
       
       if (downloadItem && downloadItem.filename) {
         savePath = downloadItem.filename;
-        // 取消临时下载
-        await chrome.downloads.cancel(downloadId);
-        // 删除临时文件
-        await chrome.downloads.erase({ id: downloadId });
       }
     } finally {
-      URL.revokeObjectURL(tempBlobUrl);
+      URL.revokeObjectURL(blobUrl);
     }
     
     if (!savePath) {
@@ -145,87 +173,74 @@ saveBtn.addEventListener('click', async () => {
     const separatorIndex = Math.max(lastSlash, lastBackslash);
     const saveDir = separatorIndex > 0 ? savePath.substring(0, separatorIndex) : '';
     
-    // 检查是否需要下载图片
-    const shouldDownloadImages = downloadImagesCheckbox.checked;
-    
-    let markdown;
     let imageStats = null;
     
-    if (shouldDownloadImages) {
-      // 使用带图片提取的转换方法
-      const { markdown: md, images } = converter.convertWithImages(html, title, url);
-      markdown = md;
+    // 如果需要下载图片
+    if (shouldDownloadImages && images && images.length > 0) {
+      showStatus('loading', `发现 ${images.length} 张图片，开始下载...`);
       
-      if (images && images.length > 0) {
-        showStatus('loading', `发现 ${images.length} 张图片，开始下载...`);
-        
-        // 创建路径管理器
-        const pathManager = new ImagePathManager(fileName);
-        const assetsFolder = pathManager.getAssetsFolderName();
-        
-        // 构建图片保存的完整路径
-        const imageSavePath = saveDir ? `${saveDir}/${assetsFolder}` : assetsFolder;
-        
-        // 创建图片下载器
-        const downloader = new ImageDownloader({
-          folderName: imageSavePath,
-          maxConcurrent: 5,
-          timeout: 30000,
-          maxRetries: 3
-        });
-        
-        // 设置进度回调
-        downloader.setProgressCallback((completed, total, currentImage, result) => {
-          const status = result.success ? '✓' : '✗';
-          showStatus('loading', `下载图片 ${completed}/${total} ${status}\n${currentImage.absoluteUrl.substring(0, 50)}...`);
-        });
-        
-        // 下载所有图片
-        const downloadResults = await downloader.downloadAll(images);
-        
-        // 更新Markdown中的图片引用
-        markdown = pathManager.updateMarkdownReferences(markdown, images, downloadResults);
-        
-        // 生成统计信息
-        imageStats = pathManager.generateStats(downloadResults);
-      }
-    } else {
-      // 不下载图片，使用原有转换方法
-      markdown = converter.convert(html, title, url);
-    }
-    
-    // 保存 Markdown 文件到用户选择的路径
-    const blob = new Blob([markdown], { type: 'text/markdown' });
-    const blobUrl = URL.createObjectURL(blob);
-    
-    try {
-      const downloadId = await new Promise((resolve, reject) => {
-        chrome.downloads.download({
-          url: blobUrl,
-          filename: savePath,
-          saveAs: false
-        }, (downloadId) => {
-          if (chrome.runtime.lastError) {
-            reject(new Error(chrome.runtime.lastError.message));
-          } else {
-            resolve(downloadId);
-          }
-        });
+      // 创建路径管理器
+      const pathManager = new ImagePathManager(fileName);
+      const assetsFolder = pathManager.getAssetsFolderName();
+      
+      // 构建图片保存的完整路径
+      const imageSavePath = saveDir ? `${saveDir}/${assetsFolder}` : assetsFolder;
+      
+      // 创建图片下载器
+      const downloader = new ImageDownloader({
+        folderName: imageSavePath,
+        maxConcurrent: 5,
+        timeout: 30000,
+        maxRetries: 3
       });
       
-      if (downloadId) {
-        let message = `保存成功！文件名: ${fileName}.md`;
-        if (imageStats) {
-          message += `\n图片: ${imageStats.success}/${imageStats.total} 成功下载`;
-          if (imageStats.failed > 0) {
-            message += `，${imageStats.failed} 失败`;
-          }
-        }
-        showStatus('success', message);
+      // 设置进度回调
+      downloader.setProgressCallback((completed, total, currentImage, result) => {
+        const status = result.success ? '✓' : '✗';
+        showStatus('loading', `下载图片 ${completed}/${total} ${status}\n${currentImage.absoluteUrl.substring(0, 50)}...`);
+      });
+      
+      // 下载所有图片
+      const downloadResults = await downloader.downloadAll(images);
+      
+      // 更新Markdown中的图片引用
+      markdown = pathManager.updateMarkdownReferences(markdown, images, downloadResults);
+      
+      // 生成统计信息
+      imageStats = pathManager.generateStats(downloadResults);
+      
+      // 重新保存更新后的 Markdown 文件
+      const updatedBlob = new Blob([markdown], { type: 'text/markdown' });
+      const updatedBlobUrl = URL.createObjectURL(updatedBlob);
+      
+      try {
+        await new Promise((resolve, reject) => {
+          chrome.downloads.download({
+            url: updatedBlobUrl,
+            filename: savePath,
+            saveAs: false,
+            conflictAction: 'overwrite'
+          }, (id) => {
+            if (chrome.runtime.lastError) {
+              reject(new Error(chrome.runtime.lastError.message));
+            } else {
+              resolve(id);
+            }
+          });
+        });
+      } finally {
+        URL.revokeObjectURL(updatedBlobUrl);
       }
-    } finally {
-      URL.revokeObjectURL(blobUrl);
     }
+    
+    let message = `保存成功！文件名: ${fileName}.md`;
+    if (imageStats) {
+      message += `\n图片: ${imageStats.success}/${imageStats.total} 成功下载`;
+      if (imageStats.failed > 0) {
+        message += `，${imageStats.failed} 失败`;
+      }
+    }
+    showStatus('success', message);
     
   } catch (error) {
     console.error('Error:', error);
