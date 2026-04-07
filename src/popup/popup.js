@@ -92,6 +92,59 @@ saveBtn.addEventListener('click', async () => {
     const { title, html, url } = results[0].result;
     const fileName = converter.sanitizeFileName(title);
     
+    // 先让用户选择保存路径
+    showStatus('loading', '请选择保存位置...');
+    
+    // 创建一个临时的空文件来获取用户选择的路径
+    const tempBlob = new Blob([''], { type: 'text/plain' });
+    const tempBlobUrl = URL.createObjectURL(tempBlob);
+    
+    let savePath = null;
+    try {
+      const downloadId = await new Promise((resolve, reject) => {
+        chrome.downloads.download({
+          url: tempBlobUrl,
+          filename: fileName + '.md',
+          saveAs: true
+        }, (downloadId) => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+          } else {
+            resolve(downloadId);
+          }
+        });
+      });
+      
+      // 获取用户选择的保存路径
+      const downloadItem = await new Promise((resolve) => {
+        chrome.downloads.search({ id: downloadId }, (results) => {
+          resolve(results && results.length > 0 ? results[0] : null);
+        });
+      });
+      
+      if (downloadItem && downloadItem.filename) {
+        savePath = downloadItem.filename;
+        // 取消临时下载
+        await chrome.downloads.cancel(downloadId);
+        // 删除临时文件
+        await chrome.downloads.erase({ id: downloadId });
+      }
+    } finally {
+      URL.revokeObjectURL(tempBlobUrl);
+    }
+    
+    if (!savePath) {
+      showStatus('error', '未选择保存位置');
+      saveBtn.disabled = false;
+      return;
+    }
+    
+    // 从完整路径中提取目录路径
+    const lastSlash = savePath.lastIndexOf('/');
+    const lastBackslash = savePath.lastIndexOf('\\');
+    const separatorIndex = Math.max(lastSlash, lastBackslash);
+    const saveDir = separatorIndex > 0 ? savePath.substring(0, separatorIndex) : '';
+    
     // 检查是否需要下载图片
     const shouldDownloadImages = downloadImagesCheckbox.checked;
     
@@ -110,9 +163,12 @@ saveBtn.addEventListener('click', async () => {
         const pathManager = new ImagePathManager(fileName);
         const assetsFolder = pathManager.getAssetsFolderName();
         
+        // 构建图片保存的完整路径
+        const imageSavePath = saveDir ? `${saveDir}/${assetsFolder}` : assetsFolder;
+        
         // 创建图片下载器
         const downloader = new ImageDownloader({
-          folderName: assetsFolder,
+          folderName: imageSavePath,
           maxConcurrent: 5,
           timeout: 30000,
           maxRetries: 3
@@ -138,24 +194,37 @@ saveBtn.addEventListener('click', async () => {
       markdown = converter.convert(html, title, url);
     }
     
+    // 保存 Markdown 文件到用户选择的路径
     const blob = new Blob([markdown], { type: 'text/markdown' });
     const blobUrl = URL.createObjectURL(blob);
     
-    const downloadId = await chrome.downloads.download({
-      url: blobUrl,
-      filename: fileName + '.md',
-      saveAs: true
-    });
-    
-    if (downloadId) {
-      let message = `保存成功！文件名: ${fileName}.md`;
-      if (imageStats) {
-        message += `\n图片: ${imageStats.success}/${imageStats.total} 成功下载`;
-        if (imageStats.failed > 0) {
-          message += `，${imageStats.failed} 失败`;
+    try {
+      const downloadId = await new Promise((resolve, reject) => {
+        chrome.downloads.download({
+          url: blobUrl,
+          filename: savePath,
+          saveAs: false
+        }, (downloadId) => {
+          if (chrome.runtime.lastError) {
+            reject(new Error(chrome.runtime.lastError.message));
+          } else {
+            resolve(downloadId);
+          }
+        });
+      });
+      
+      if (downloadId) {
+        let message = `保存成功！文件名: ${fileName}.md`;
+        if (imageStats) {
+          message += `\n图片: ${imageStats.success}/${imageStats.total} 成功下载`;
+          if (imageStats.failed > 0) {
+            message += `，${imageStats.failed} 失败`;
+          }
         }
+        showStatus('success', message);
       }
-      showStatus('success', message);
+    } finally {
+      URL.revokeObjectURL(blobUrl);
     }
     
   } catch (error) {
