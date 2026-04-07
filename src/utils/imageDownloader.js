@@ -116,7 +116,9 @@ class ImageDownloader {
    */
   async downloadUrl(image) {
     const filename = this.generateFilename(image);
-    const fullPath = this.folderName + '/' + filename;
+    // 检测路径分隔符
+    const pathSeparator = this.folderName.includes('\\') ? '\\' : '/';
+    const fullPath = this.folderName + pathSeparator + filename;
     
     // 使用Chrome Downloads API
     const downloadId = await new Promise((resolve, reject) => {
@@ -153,7 +155,9 @@ class ImageDownloader {
    */
   async downloadBase64(image) {
     const filename = this.generateFilename(image);
-    const fullPath = this.folderName + '/' + filename;
+    // 检测路径分隔符
+    const pathSeparator = this.folderName.includes('\\') ? '\\' : '/';
+    const fullPath = this.folderName + pathSeparator + filename;
     
     // Base64转Blob
     const response = await fetch(image.absoluteUrl);

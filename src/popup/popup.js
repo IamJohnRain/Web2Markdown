@@ -173,6 +173,9 @@ saveBtn.addEventListener('click', async () => {
     const separatorIndex = Math.max(lastSlash, lastBackslash);
     const saveDir = separatorIndex > 0 ? savePath.substring(0, separatorIndex) : '';
     
+    // 确定路径分隔符(Windows使用\,其他系统使用/)
+    const pathSeparator = lastBackslash > lastSlash ? '\\' : '/';
+    
     let imageStats = null;
     
     // 如果需要下载图片
@@ -184,7 +187,7 @@ saveBtn.addEventListener('click', async () => {
       const assetsFolder = pathManager.getAssetsFolderName();
       
       // 构建图片保存的完整路径
-      const imageSavePath = saveDir ? `${saveDir}/${assetsFolder}` : assetsFolder;
+      const imageSavePath = saveDir ? `${saveDir}${pathSeparator}${assetsFolder}` : assetsFolder;
       
       // 创建图片下载器
       const downloader = new ImageDownloader({
