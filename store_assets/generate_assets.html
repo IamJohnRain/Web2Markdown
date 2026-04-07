@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>生成商店素材</title>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; }
+    .section { margin: 20px 0; padding: 20px; border: 1px solid #ddd; }
+    canvas { border: 1px solid #ccc; margin: 10px; }
+    button { padding: 10px 20px; margin: 10px; cursor: pointer; }
+    .instructions { background: #f5f5f5; padding: 15px; margin: 10px 0; border-radius: 5px; }
+  </style>
+</head>
+<body>
+  <h1>Edge Store 素材生成工具</h1>
+  
+  <div class="instructions">
+    <h3>使用说明：</h3>
+    <ol>
+      <li>点击下方按钮生成各个尺寸的图片</li>
+      <li>右键点击图片 → "另存为图片" 保存</li>
+      <li>按指定文件名保存到 store_assets 文件夹</li>
+    </ol>
+  </div>
+
+  <div class="section">
+    <h2>1. 扩展图标 (128x128)</h2>
+    <button onclick="generateIcon('icon128', 128)">生成图标</button><br>
+    <canvas id="icon128" width="128" height="128"></canvas>
+    <p>保存为: icon128.png</p>
+  </div>
+
+  <div class="section">
+    <h2>2. 小宣传图 (440x280)</h2>
+    <button onclick="generatePromoSmall()">生成小宣传图</button><br>
+    <canvas id="promoSmall" width="440" height="280"></canvas>
+    <p>保存为: promo_440x280.png</p>
+  </div>
+
+  <div class="section">
+    <h2>3. 大宣传图 (920x680)</h2>
+    <button onclick="generatePromoLarge()">生成大宣传图</button><br>
+    <canvas id="promoLarge" width="920" height="680"></canvas>
+    <p>保存为: promo_920x680.png</p>
+  </div>
+
+  <div class="section">
+    <h2>4. 截图 (1280x800)</h2>
+    <button onclick="generateScreenshot()">生成截图模板</button><br>
+    <canvas id="screenshot" width="1280" height="800"></canvas>
+    <p>保存为: screenshot_1280x800.png</p>
+    <p style="color: red;">注意：建议使用真实插件截图替换此模板</p>
+  </div>
+
+  <script>
+    function generateIcon(canvasId, size) {
+      const canvas = document.getElementById(canvasId);
+      const ctx = canvas.getContext('2d');
+      
+      ctx.clearRect(0, 0, size, size);
+      
+      const gradient = ctx.createLinearGradient(0, 0, size, size);
+      gradient.addColorStop(0, '#4285f4');
+      gradient.addColorStop(1, '#34a853');
+      
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.roundRect(0, 0, size, size, size * 0.2);
+      ctx.fill();
+      
+      ctx.fillStyle = 'white';
+      ctx.font = `bold ${size * 0.45}px Arial`;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('MD', size / 2, size / 2);
+    }
+
+    function generatePromoSmall() {
+      const canvas = document.getElementById('promoSmall');
+      const ctx = canvas.getContext('2d');
+      
+      ctx.fillStyle = '#f8f9fa';
+      ctx.fillRect(0, 0, 440, 280);
+      
+      const gradient = ctx.createLinearGradient(20, 20, 100, 100);
+      gradient.addColorStop(0, '#4285f4');
+      gradient.addColorStop(1, '#34a853');
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.roundRect(20, 20, 80, 80, 16);
+      ctx.fill();
+      
+      ctx.fillStyle = 'white';
+      ctx.font = 'bold 36px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('MD', 60, 60);
+      
+      ctx.fillStyle = '#202124';
+      ctx.font = 'bold 24px Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText('Web to Markdown', 120, 50);
+      
+      ctx.fillStyle = '#5f6368';
+      ctx.font = '14px Arial';
+      ctx.fillText('将网页一键转换为 Markdown', 120, 80);
+      
+      ctx.fillStyle = '#202124';
+      ctx.font = '16px Arial';
+      const features = [
+        '✓ 一键转换网页为 Markdown',
+        '✓ 自选本地保存位置',
+        '✓ 自动以标题命名文件',
+        '✓ 支持表格、代码块等格式'
+      ];
+      features.forEach((text, i) => {
+        ctx.fillText(text, 30, 140 + i * 30);
+      });
+    }
+
+    function generatePromoLarge() {
+      const canvas = document.getElementById('promoLarge');
+      const ctx = canvas.getContext('2d');
+      
+      ctx.fillStyle = '#f8f9fa';
+      ctx.fillRect(0, 0, 920, 680);
+      
+      const gradient = ctx.createLinearGradient(40, 40, 160, 160);
+      gradient.addColorStop(0, '#4285f4');
+      gradient.addColorStop(1, '#34a853');
+      ctx.fillStyle = gradient;
+      ctx.beginPath();
+      ctx.roundRect(40, 40, 120, 120, 24);
+      ctx.fill();
+      
+      ctx.fillStyle = 'white';
+      ctx.font = 'bold 54px Arial';
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText('MD', 100, 100);
+      
+      ctx.fillStyle = '#202124';
+      ctx.font = 'bold 36px Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText('Web to Markdown', 180, 70);
+      
+      ctx.fillStyle = '#5f6368';
+      ctx.font = '18px Arial';
+      ctx.fillText('将网页一键转换为 Markdown 并保存到本地', 180, 110);
+      
+      ctx.fillStyle = '#202124';
+      ctx.font = '20px Arial';
+      const features = [
+        '✓ 一键转换网页为 Markdown 格式',
+        '✓ 自选本地磁盘保存位置',
+        '✓ 自动以网页标题命名文件',
+        '✓ 保留标题、段落、列表、链接、图片、代码块、表格等格式',
+        '✓ 支持主流新闻、博客、文档网站'
+      ];
+      features.forEach((text, i) => {
+        ctx.fillText(text, 50, 220 + i * 40);
+      });
+      
+      ctx.strokeStyle = '#dadce0';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(50, 440, 820, 200, 12);
+      ctx.stroke();
+      
+      ctx.fillStyle = '#f8f9fa';
+      ctx.fillRect(50, 440, 820, 200);
+      ctx.fill();
+      ctx.beginPath();
+      ctx.roundRect(50, 440, 820, 200, 12);
+      ctx.stroke();
+      
+      ctx.fillStyle = '#202124';
+      ctx.font = '16px Arial';
+      ctx.fillText('使用方法：', 70, 470);
+      ctx.fillStyle = '#5f6368';
+      ctx.fillText('1. 浏览任意网页  →  2. 点击插件图标  →  3. 点击"保存为 Markdown"  →  4. 选择保存位置', 70, 500);
+      
+      ctx.fillStyle = '#4285f4';
+      ctx.beginPath();
+      ctx.roundRect(70, 540, 200, 50, 8);
+      ctx.fill();
+      ctx.fillStyle = 'white';
+      ctx.font = 'bold 16px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('保存为 Markdown', 170, 570);
+    }
+
+    function generateScreenshot() {
+      const canvas = document.getElementById('screenshot');
+      const ctx = canvas.getContext('2d');
+      
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, 1280, 800);
+      
+      ctx.fillStyle = '#f1f3f4';
+      ctx.fillRect(0, 0, 1280, 60);
+      
+      ctx.fillStyle = '#202124';
+      ctx.font = '16px Arial';
+      ctx.textAlign = 'left';
+      ctx.fillText('示例网页 - Web to Markdown 演示', 20, 38);
+      
+      ctx.fillStyle = '#202124';
+      ctx.font = 'bold 32px Arial';
+      ctx.fillText('Web to Markdown Chrome Extension', 100, 150);
+      
+      ctx.fillStyle = '#5f6368';
+      ctx.font = '18px Arial';
+      ctx.fillText('将网页内容转换为 Markdown 格式，方便保存和编辑', 100, 190);
+      
+      ctx.fillStyle = '#202124';
+      ctx.font = '24px Arial';
+      ctx.fillText('功能特点', 100, 280);
+      
+      ctx.font = '18px Arial';
+      const content = [
+        '• 一键转换：点击插件图标即可转换当前页面',
+        '• 自选位置：支持选择本地磁盘保存位置',
+        '• 智能命名：自动使用网页标题作为文件名',
+        '• 格式保留：支持标题、列表、表格、代码块等'
+      ];
+      content.forEach((text, i) => {
+        ctx.fillText(text, 100, 320 + i * 35);
+      });
+      
+      ctx.fillStyle = '#4285f4';
+      ctx.beginPath();
+      ctx.roundRect(1100, 70, 160, 300, 8);
+      ctx.fill();
+      
+      ctx.fillStyle = 'white';
+      ctx.font = 'bold 14px Arial';
+      ctx.textAlign = 'center';
+      ctx.fillText('Web to MD', 1180, 100);
+      
+      ctx.fillStyle = 'rgba(255,255,255,0.2)';
+      ctx.fillRect(1110, 120, 140, 200);
+      
+      ctx.fillStyle = 'white';
+      ctx.font = '12px Arial';
+      ctx.fillText('点击插件', 1180, 220);
+      ctx.fillText('保存页面', 1180, 240);
+      
+      ctx.strokeStyle = '#4285f4';
+      ctx.lineWidth = 3;
+      ctx.setLineDash([10, 5]);
+      ctx.beginPath();
+      ctx.arc(1180, 220, 60, 0, Math.PI * 2);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+
+    // 自动生成所有图片
+    window.onload = function() {
+      generateIcon('icon128', 128);
+      generatePromoSmall();
+      generatePromoLarge();
+      generateScreenshot();
+    };
+  </script>
+</body>
+</html>

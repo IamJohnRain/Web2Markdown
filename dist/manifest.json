@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "Web2Markdown",
+  "name": "Web to Markdown",
   "version": "1.0.0",
   "description": "将网页转换为 Markdown 并保存到本地",
   "permissions": [
