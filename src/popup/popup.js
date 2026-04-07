@@ -2,6 +2,7 @@ const saveBtn = document.getElementById('saveBtn');
 const statusDiv = document.getElementById('status');
 const pageTitleEl = document.getElementById('pageTitle');
 const pageUrlEl = document.getElementById('pageUrl');
+const downloadImagesCheckbox = document.getElementById('downloadImages');
 
 let converter = null;
 
@@ -14,6 +15,9 @@ function init() {
     
     converter = new MarkdownConverter();
     
+    // 加载用户设置
+    loadSettings();
+    
     chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
       if (tabs && tabs[0]) {
         pageTitleEl.textContent = tabs[0].title || '未知页面';
@@ -25,6 +29,33 @@ function init() {
     showStatus('error', '初始化失败: ' + error.message);
   }
 }
+
+// 加载用户设置
+async function loadSettings() {
+  try {
+    const result = await chrome.storage.local.get(['downloadImages']);
+    // 如果有保存的设置，使用它；否则保持默认值（checked）
+    if (result.downloadImages !== undefined) {
+      downloadImagesCheckbox.checked = result.downloadImages;
+    }
+  } catch (error) {
+    console.error('Load settings failed:', error);
+  }
+}
+
+// 保存用户设置
+async function saveSettings() {
+  try {
+    await chrome.storage.local.set({
+      downloadImages: downloadImagesCheckbox.checked
+    });
+  } catch (error) {
+    console.error('Save settings failed:', error);
+  }
+}
+
+// 监听复选框变化
+downloadImagesCheckbox.addEventListener('change', saveSettings);
 
 init();
 
@@ -59,9 +90,53 @@ saveBtn.addEventListener('click', async () => {
     }
     
     const { title, html, url } = results[0].result;
-    
-    const markdown = converter.convert(html, title, url);
     const fileName = converter.sanitizeFileName(title);
+    
+    // 检查是否需要下载图片
+    const shouldDownloadImages = downloadImagesCheckbox.checked;
+    
+    let markdown;
+    let imageStats = null;
+    
+    if (shouldDownloadImages) {
+      // 使用带图片提取的转换方法
+      const { markdown: md, images } = converter.convertWithImages(html, title, url);
+      markdown = md;
+      
+      if (images && images.length > 0) {
+        showStatus('loading', `发现 ${images.length} 张图片，开始下载...`);
+        
+        // 创建路径管理器
+        const pathManager = new ImagePathManager(fileName);
+        const assetsFolder = pathManager.getAssetsFolderName();
+        
+        // 创建图片下载器
+        const downloader = new ImageDownloader({
+          folderName: assetsFolder,
+          maxConcurrent: 5,
+          timeout: 30000,
+          maxRetries: 3
+        });
+        
+        // 设置进度回调
+        downloader.setProgressCallback((completed, total, currentImage, result) => {
+          const status = result.success ? '✓' : '✗';
+          showStatus('loading', `下载图片 ${completed}/${total} ${status}\n${currentImage.absoluteUrl.substring(0, 50)}...`);
+        });
+        
+        // 下载所有图片
+        const downloadResults = await downloader.downloadAll(images);
+        
+        // 更新Markdown中的图片引用
+        markdown = pathManager.updateMarkdownReferences(markdown, images, downloadResults);
+        
+        // 生成统计信息
+        imageStats = pathManager.generateStats(downloadResults);
+      }
+    } else {
+      // 不下载图片，使用原有转换方法
+      markdown = converter.convert(html, title, url);
+    }
     
     const blob = new Blob([markdown], { type: 'text/markdown' });
     const blobUrl = URL.createObjectURL(blob);
@@ -73,7 +148,14 @@ saveBtn.addEventListener('click', async () => {
     });
     
     if (downloadId) {
-      showStatus('success', `保存成功！文件名: ${fileName}.md`);
+      let message = `保存成功！文件名: ${fileName}.md`;
+      if (imageStats) {
+        message += `\n图片: ${imageStats.success}/${imageStats.total} 成功下载`;
+        if (imageStats.failed > 0) {
+          message += `，${imageStats.failed} 失败`;
+        }
+      }
+      showStatus('success', message);
     }
     
   } catch (error) {
@@ -87,9 +169,13 @@ saveBtn.addEventListener('click', async () => {
 function showStatus(type, message) {
   statusDiv.className = `status ${type}`;
   
-  if (type === 'success' && message.includes('\n')) {
+  if (message.includes('\n')) {
     const parts = message.split('\n');
-    statusDiv.innerHTML = parts[0] + '<br><span class="path">' + parts[1] + '</span>';
+    let html = parts[0];
+    for (let i = 1; i < parts.length; i++) {
+      html += '<br><span class="path">' + parts[i] + '</span>';
+    }
+    statusDiv.innerHTML = html;
   } else {
     statusDiv.textContent = message;
   }

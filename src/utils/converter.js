@@ -104,6 +104,27 @@ class MarkdownConverter {
     return markdown;
   }
   
+  /**
+   * 转换HTML为Markdown并提取图片信息
+   * @param {string} html - HTML内容
+   * @param {string} title - 页面标题
+   * @param {string} url - 页面URL
+   * @returns {Object} 包含markdown和images的对象
+   */
+  convertWithImages(html, title, url) {
+    // 提取图片信息
+    const imageExtractor = new ImageExtractor();
+    const images = imageExtractor.extract(html, url);
+    
+    // 转换为Markdown
+    const markdown = this.convert(html, title, url);
+    
+    return {
+      markdown,
+      images
+    };
+  }
+  
   sanitizeFileName(name) {
     let sanitized = name
       .replace(/[<>:"/\\|?*]/g, '_')

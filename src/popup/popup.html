@@ -143,6 +143,35 @@
       font-size: 11px;
       color: #5f6368;
     }
+    
+    .image-options {
+      background: #f8f9fa;
+      border-radius: 8px;
+      padding: 12px;
+      margin-bottom: 16px;
+    }
+    
+    .checkbox-label {
+      display: flex;
+      align-items: center;
+      cursor: pointer;
+      font-size: 13px;
+      color: #202124;
+    }
+    
+    .checkbox-label input[type="checkbox"] {
+      width: 16px;
+      height: 16px;
+      margin-right: 8px;
+      cursor: pointer;
+    }
+    
+    .option-hint {
+      margin-top: 6px;
+      font-size: 11px;
+      color: #5f6368;
+      padding-left: 24px;
+    }
   </style>
 </head>
 <body>
@@ -154,6 +183,16 @@
   <div class="page-info">
     <div class="page-title" id="pageTitle">加载中...</div>
     <div class="page-url" id="pageUrl"></div>
+  </div>
+  
+  <div class="image-options">
+    <label class="checkbox-label">
+      <input type="checkbox" id="downloadImages" checked>
+      <span>下载图片到本地</span>
+    </label>
+    <div class="option-hint">
+      图片将保存在Markdown文件同级的资源文件夹中
+    </div>
   </div>
   
   <button id="saveBtn">
@@ -168,6 +207,9 @@
   </div>
   
   <script src="../../lib/turndown.min.js"></script>
+  <script src="../utils/imageExtractor.js"></script>
+  <script src="../utils/imageDownloader.js"></script>
+  <script src="../utils/imagePathManager.js"></script>
   <script src="../utils/converter.js"></script>
   <script src="../utils/fileSaver.js"></script>
   <script src="popup.js"></script>
