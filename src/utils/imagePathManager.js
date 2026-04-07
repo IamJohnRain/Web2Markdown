@@ -16,7 +16,7 @@ class ImagePathManager {
    * @returns {string} 文件夹名称
    */
   getAssetsFolderName() {
-    return this.markdownFilename + '_assets';
+    return 'images';
   }
   
   /**
