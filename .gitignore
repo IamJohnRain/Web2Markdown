@@ -1,0 +1,9 @@
+# Distribution directory
+dist/
+
+# Archive files
+*.zip
+
+# IDE and tool directories
+.arts/
+.codeartsdoer/
