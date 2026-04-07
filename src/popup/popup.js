@@ -187,7 +187,21 @@ saveBtn.addEventListener('click', async () => {
       const assetsFolder = pathManager.getAssetsFolderName();
       
       // 构建图片保存的完整路径
-      const imageSavePath = saveDir ? `${saveDir}${pathSeparator}${assetsFolder}` : assetsFolder;
+      // Chrome Downloads API 需要使用相对路径格式
+      let imageSavePath;
+      if (saveDir) {
+        // 将绝对路径转换为相对路径格式
+        // Windows: C:\Users\...\Documents -> Documents/.../images
+        // macOS/Linux: /Users/.../Documents -> Documents/.../images
+        const dirParts = saveDir.split(/[/\\]/);
+        // 取最后几级目录构建相对路径
+        const relativeParts = dirParts.slice(-3); // 最多取3级
+        imageSavePath = relativeParts.join('/') + '/' + assetsFolder;
+      } else {
+        imageSavePath = assetsFolder;
+      }
+      
+      console.log('Image save path:', imageSavePath);
       
       // 创建图片下载器
       const downloader = new ImageDownloader({
@@ -200,11 +214,13 @@ saveBtn.addEventListener('click', async () => {
       // 设置进度回调
       downloader.setProgressCallback((completed, total, currentImage, result) => {
         const status = result.success ? '✓' : '✗';
-        showStatus('loading', `下载图片 ${completed}/${total} ${status}\n${currentImage.absoluteUrl.substring(0, 50)}...`);
+        const errorMsg = result.error ? ` (${result.error})` : '';
+        showStatus('loading', `下载图片 ${completed}/${total} ${status}${errorMsg}\n${currentImage.absoluteUrl.substring(0, 50)}...`);
       });
       
       // 下载所有图片
       const downloadResults = await downloader.downloadAll(images);
+      console.log('Download results:', downloadResults);
       
       // 更新Markdown中的图片引用
       markdown = pathManager.updateMarkdownReferences(markdown, images, downloadResults);

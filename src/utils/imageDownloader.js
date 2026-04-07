@@ -116,64 +116,22 @@ class ImageDownloader {
    */
   async downloadUrl(image) {
     const filename = this.generateFilename(image);
-    // 检测路径分隔符
-    const pathSeparator = this.folderName.includes('\\') ? '\\' : '/';
-    const fullPath = this.folderName + pathSeparator + filename;
+    // 统一使用 / 作为分隔符,Chrome Downloads API 会自动处理
+    const fullPath = this.folderName + '/' + filename;
     
-    // 使用Chrome Downloads API
-    const downloadId = await new Promise((resolve, reject) => {
-      chrome.downloads.download({
-        url: image.absoluteUrl,
-        filename: fullPath,
-        saveAs: false,
-        conflictAction: 'uniquify'
-      }, (downloadId) => {
-        if (chrome.runtime.lastError) {
-          reject(new Error(chrome.runtime.lastError.message));
-        } else {
-          resolve(downloadId);
-        }
-      });
-    });
-    
-    // 等待下载完成
-    await this.waitForCompletion(downloadId);
-    
-    // 使用相对路径作为 localPath
-    return {
-      imageId: image.id,
-      success: true,
-      localPath: fullPath,
-      filename: filename
-    };
-  }
-  
-  /**
-   * 下载Base64图片
-   * @param {ImageInfo} image - 图片信息
-   * @returns {Promise<DownloadResult>} 下载结果
-   */
-  async downloadBase64(image) {
-    const filename = this.generateFilename(image);
-    // 检测路径分隔符
-    const pathSeparator = this.folderName.includes('\\') ? '\\' : '/';
-    const fullPath = this.folderName + pathSeparator + filename;
-    
-    // Base64转Blob
-    const response = await fetch(image.absoluteUrl);
-    const blob = await response.blob();
-    const blobUrl = URL.createObjectURL(blob);
+    console.log('Downloading image to:', fullPath);
     
     try {
       // 使用Chrome Downloads API
       const downloadId = await new Promise((resolve, reject) => {
         chrome.downloads.download({
-          url: blobUrl,
+          url: image.absoluteUrl,
           filename: fullPath,
           saveAs: false,
           conflictAction: 'uniquify'
         }, (downloadId) => {
           if (chrome.runtime.lastError) {
+            console.error('Download error:', chrome.runtime.lastError.message);
             reject(new Error(chrome.runtime.lastError.message));
           } else {
             resolve(downloadId);
@@ -190,6 +148,70 @@ class ImageDownloader {
         success: true,
         localPath: fullPath,
         filename: filename
+      };
+    } catch (error) {
+      console.error('Failed to download image:', error);
+      return {
+        imageId: image.id,
+        success: false,
+        error: error.message,
+        localPath: null
+      };
+    }
+  }
+  
+  /**
+   * 下载Base64图片
+   * @param {ImageInfo} image - 图片信息
+   * @returns {Promise<DownloadResult>} 下载结果
+   */
+  async downloadBase64(image) {
+    const filename = this.generateFilename(image);
+    // 统一使用 / 作为分隔符,Chrome Downloads API 会自动处理
+    const fullPath = this.folderName + '/' + filename;
+    
+    console.log('Downloading base64 image to:', fullPath);
+    
+    // Base64转Blob
+    const response = await fetch(image.absoluteUrl);
+    const blob = await response.blob();
+    const blobUrl = URL.createObjectURL(blob);
+    
+    try {
+      // 使用Chrome Downloads API
+      const downloadId = await new Promise((resolve, reject) => {
+        chrome.downloads.download({
+          url: blobUrl,
+          filename: fullPath,
+          saveAs: false,
+          conflictAction: 'uniquify'
+        }, (downloadId) => {
+          if (chrome.runtime.lastError) {
+            console.error('Download error:', chrome.runtime.lastError.message);
+            reject(new Error(chrome.runtime.lastError.message));
+          } else {
+            resolve(downloadId);
+          }
+        });
+      });
+      
+      // 等待下载完成
+      await this.waitForCompletion(downloadId);
+      
+      // 使用相对路径作为 localPath
+      return {
+        imageId: image.id,
+        success: true,
+        localPath: fullPath,
+        filename: filename
+      };
+    } catch (error) {
+      console.error('Failed to download base64 image:', error);
+      return {
+        imageId: image.id,
+        success: false,
+        error: error.message,
+        localPath: null
       };
     } finally {
       // 清理Blob URL
