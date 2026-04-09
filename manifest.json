@@ -1,14 +1,13 @@
 {
   "manifest_version": 3,
   "name": "Web2Markdown",
-  "version": "1.0.0",
-  "description": "将网页转换为 Markdown 并保存到本地",
+  "version": "2.0.0",
+  "description": "将网页转换为 Markdown 并保存到本地，支持图片下载到同一目录",
   "permissions": [
     "activeTab",
-    "clipboardWrite",
     "scripting",
-    "downloads",
-    "storage"
+    "storage",
+    "downloads"
   ],
   "host_permissions": [
     "<all_urls>"
